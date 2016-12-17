@@ -399,7 +399,7 @@ public class DBWorkload {
                     }
                 }
                 Phase.Arrival arrival=Phase.Arrival.REGULAR;
-                String arrive=work.getString("@arrival","regular");
+                String arrive=work.getString("arrival","regular");
                 if(arrive.toUpperCase().equals("POISSON"))
                     arrival=Phase.Arrival.POISSON;
                 

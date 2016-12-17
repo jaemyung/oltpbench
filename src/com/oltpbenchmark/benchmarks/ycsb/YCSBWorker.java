@@ -20,20 +20,17 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Random;
 
+import com.oltpbenchmark.DBWorkload;
 import com.oltpbenchmark.api.Procedure;
 import com.oltpbenchmark.api.Procedure.UserAbortException;
 import com.oltpbenchmark.api.TransactionType;
 import com.oltpbenchmark.api.Worker;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.DeleteRecord;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.InsertRecord;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.ReadModifyWriteRecord;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.ReadRecord;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.ScanRecord;
-import com.oltpbenchmark.benchmarks.ycsb.procedures.UpdateRecord;
+import com.oltpbenchmark.benchmarks.ycsb.procedures.*;
 import com.oltpbenchmark.distributions.CounterGenerator;
 import com.oltpbenchmark.distributions.ZipfianGenerator;
 import com.oltpbenchmark.types.TransactionStatus;
 import com.oltpbenchmark.util.TextGenerator;
+import org.apache.log4j.Logger;
 
 /**
  * YCSBWorker Implementation
@@ -42,6 +39,7 @@ import com.oltpbenchmark.util.TextGenerator;
  *
  */
 public class YCSBWorker extends Worker<YCSBBenchmark> {
+    private static final Logger LOG = Logger.getLogger(Worker.class);
 
     private ZipfianGenerator readRecord;
     private static CounterGenerator insertRecord;
@@ -57,6 +55,7 @@ public class YCSBWorker extends Worker<YCSBBenchmark> {
     private final ReadModifyWriteRecord procReadModifyWriteRecord;
     private final InsertRecord procInsertRecord;
     private final DeleteRecord procDeleteRecord;
+    private final ReadVLCounter procReadVLCounter;
     
     public YCSBWorker(YCSBBenchmark benchmarkModule, int id, int init_record_count) {
         super(benchmarkModule, id);
@@ -79,6 +78,7 @@ public class YCSBWorker extends Worker<YCSBBenchmark> {
         this.procReadModifyWriteRecord = this.getProcedure(ReadModifyWriteRecord.class);
         this.procInsertRecord = this.getProcedure(InsertRecord.class);
         this.procDeleteRecord = this.getProcedure(DeleteRecord.class);
+        this.procReadVLCounter = this.getProcedure(ReadVLCounter.class);
     }
 
     @Override
@@ -97,6 +97,8 @@ public class YCSBWorker extends Worker<YCSBBenchmark> {
             scanRecord();
         } else if (procClass.equals(UpdateRecord.class)) {
             updateRecord();
+        } else if (procClass.equals(ReadVLCounter.class)) {
+            readVLCounter();
         }
         conn.commit();
         return (TransactionStatus.SUCCESS);
@@ -140,6 +142,13 @@ public class YCSBWorker extends Worker<YCSBBenchmark> {
         assert (this.procDeleteRecord != null);
         int keyname = readRecord.nextInt();
         this.procDeleteRecord.run(conn, keyname);
+    }
+
+    private void readVLCounter() throws SQLException {
+        assert (this.procReadVLCounter != null);
+        String counter[] = new String [2];
+        this.procReadVLCounter.run(conn, counter);
+        LOG.info(getName()+" - cnt_visibility_level_1="+counter[0]+", cnt_visibility_level_1_blocking="+counter[1]+"\n");
     }
 
     private void buildParameters() {
